@@ -1,3 +1,1 @@
-# CourseraPMLProject
-## INFO
-### BIGGER INFO
+# Coursera PML Project
