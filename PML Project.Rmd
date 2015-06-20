@@ -1,0 +1,89 @@
+---
+title: "Courseras' Practical Machine Learning Project"
+author: "Magdiel Guardado"
+date: "Friday, June 19, 2015"
+output: html_document
+---
+
+### Loading data
+
+First, the data sets were loaded. The `pml-testing.csv` was treated as a validation set. Therefore, `pml-testing.csv`  was named `quiz`, to not confuse it with the testing set for the cross validation.
+
+```{r cache=TRUE, eval=FALSE}
+df <- read.csv("pml-training.csv")
+quiz <- read.csv("pml-testing.csv")
+```
+
+
+### Exploratory analysis and cleaning
+
+We look at the summary to look for any kind of pattern
+
+```{r eval=FALSE, echo=TRUE}
+summary(df)
+```
+
+After the summary, and reading the details of the experiment, there are three types of things that arise:
+- There are many columns with a great amount of NAs.
+- In the summary, many columns had `#DIV/0!` values. This indicates the presence of empty value cells.
+- Due to the nature of the study, there are some columns that do not have relevant data (subjects names, date stamps, etc.)
+
+In order to know which columns have many NAs or many empty values, a vector called `index` was made in order to list them
+
+```{r eval=FALSE, cache=TRUE, results='hide'}
+
+## A vector which counts how many NAs are in all columns
+nas <- vector()
+for(i in 1:length(df)){
+  nas <- c(nas,sum(is.na(df[,i])))
+}
+
+## A vector which counts how many empty values are in all columns
+emptys <- vector()
+for(i in 1:length(df)){
+  emptys <- c(emptys,sum(df[,i]==""))
+}
+
+## The index vector puts together the index of the columns that contain
+## 90% or more of their values with NAs or empty values.
+index<-sort(union(which(emptys/19622>=0.9),which(nas/19622>=0.9)))
+
+```
+
+After identifying the columns with high amounts (90% or more) of NAs and empty values, we remove these columns along with the non-relevant data columns.
+
+```{r eval=FALSE, cache=TRUE, results='hide'}
+df <- df[,-index]
+df <- df[,-c(1:7)]
+```
+
+### Modeling and cross-validation
+
+For choosing the model, given the highly structured nature of the data and the experiment, a Random Forest approach would be highly accurate.
+
+For cross-validating, it was made a very general approach: 70% of data in training set, 30% of data in testing set.
+
+```{r eval=FALSE, cache=TRUE, results='hide'}
+## Now, for the cross-validation, the pml-training.csv file was divided into
+## a training (70%) and a testing test (30%).
+library(caret)
+inTrain <- createDataPartition(y=df$classe, p=0.7, list=FALSE)
+training <- df[inTrain,]
+testing <- df[-inTrain,]
+
+## Fitting a Random Forest model
+modFitRF <- train(classe~., method="rf", data=training)
+```
+
+Then, using the model obtained, it was evaluated the error for the model using the `testing` data set.
+
+```{r eval=FALSE, cache=TRUE, results='hide'}
+## Cross validating with the testing test
+predictions <- predict(modFitRF, newdata=testing)
+
+## looking at the results
+error <- confusionMatrix(predictions, testing$classe)
+```
+
+Then, it was obtaing an accuracy of `0.9937`. Therefore, we have an error of `0.63%`.
+
